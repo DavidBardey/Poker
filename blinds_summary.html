@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Configuration des blinds</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    function rebuildPlayers() {
+      const n = parseInt(document.getElementById("nb_players").value || "6");
+      const box = document.getElementById("players_box");
+
+      const oldValues = {};
+      box.querySelectorAll("input").forEach(input => {
+        oldValues[input.name] = input.value;
+      });
+
+      box.innerHTML = "";
+
+      for (let i = 1; i <= n; i++) {
+        const div = document.createElement("div");
+        div.className = "player-card";
+
+        const inputName = `player_${i}`;
+        const previousValue = oldValues[inputName] || "";
+
+        div.innerHTML = `
+          <div class="player-badge">♠ Joueur ${i}</div>
+          <input
+            name="${inputName}"
+            value="${previousValue}"
+            placeholder="Nom du joueur ${i}"
+            autocomplete="off"
+            required
+          >
+        `;
+
+        box.appendChild(div);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", rebuildPlayers);
+  </script>
+</head>
+<body>
+  <audio autoplay loop>
+    <source src="{{ url_for('static', filename='Takefive.mp3') }}" type="audio/mpeg">
+  </audio>
+
+  <main class="container premium-page">
+    <section class="hero premium-hero">
+      <img src="{{ url_for('static', filename='dealer.png') }}" class="dealer" alt="Dealer">
+      <div class="gold-chip">♣</div>
+      <h1>Mode 3 — Soirée Poker</h1>
+      <p>Configuration des blinds, recaves, kills et export Excel</p>
+    </section>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form class="panel premium-panel" method="post">
+      <div class="section-title">
+        <span>♦</span>
+        <h2>Paramètres de la partie</h2>
+      </div>
+
+      <div class="settings-grid">
+        <label class="setting-card">
+          <span class="setting-label">Nombre joueurs</span>
+          <input id="nb_players" name="nb_players" type="number" min="2" max="20" value="6" onchange="rebuildPlayers()" required>
+        </label>
+
+        <label class="setting-card">
+          <span class="setting-label">Durée (min)</span>
+          <input name="duration_minutes" type="number" min="15" value="180" required>
+        </label>
+
+        <label class="setting-card">
+          <span class="setting-label">Cave initiale</span>
+          <input name="buy_in" type="number" min="1" value="1000" required>
+        </label>
+
+        <label class="setting-card">
+          <span class="setting-label">Recaves max</span>
+          <input name="max_rebuys" type="number" min="0" max="20" value="0" required>
+        </label>
+      </div>
+
+      <div class="section-title players-title">
+        <span>♠</span>
+        <h2>Noms des joueurs</h2>
+      </div>
+
+      <p class="hint premium-hint">Écris les vrais noms : ils seront utilisés dans l’horloge, les kills et le fichier Excel.</p>
+
+      <div id="players_box" class="players-grid premium-players-grid"></div>
+
+      <div class="action-row">
+        <button class="button premium-main-button" type="submit">Calculer les blinds</button>
+        <a class="button secondary premium-secondary-button" href="{{ url_for('index') }}">Retour au menu</a>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

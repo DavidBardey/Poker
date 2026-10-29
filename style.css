@@ -1,0 +1,338 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background:
+    radial-gradient(circle at center, #1d6b4b 0%, #0e3d2d 45%, #061a14 100%);
+  color: #f4e7c5;
+}
+
+/* Effet tapis */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.025) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.025) 25%, transparent 25%);
+  background-size: 18px 18px;
+  pointer-events: none;
+}
+
+.container {
+  max-width: 1150px;
+  margin: auto;
+  padding: 24px;
+}
+
+.hero,
+.panel,
+.clock-card,
+.modal-box {
+  background: rgba(6, 34, 25, 0.92);
+  border: 2px solid #c9a227;
+  box-shadow: 0 12px 35px rgba(0,0,0,0.45);
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 24px;
+  padding: 24px;
+  border-radius: 22px;
+}
+
+.hero h1 {
+  font-size: 34px;
+  margin: 0;
+  color: #f8d76e;
+}
+
+.hero p {
+  color: #f4e7c5;
+}
+
+.panel {
+  padding: 24px;
+  border-radius: 22px;
+}
+
+.button,
+button {
+  background: linear-gradient(180deg, #f3d36b, #c9a227);
+  color: #071a14;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 22px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.button.secondary {
+  background: #f4e7c5;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.setting-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 118px;
+  background: linear-gradient(180deg, #0b3a2b, #061f18);
+  border: 1px solid rgba(201,162,39,0.45);
+  border-radius: 16px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+
+.setting-card span {
+  min-height: 30px;
+  text-align: center;
+  font-weight: bold;
+  color: #f8d76e;
+}
+
+.setting-card input {
+  height: 44px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: #f6f2e8;
+}
+
+.setting-card input:focus,
+.player-card input:focus,
+.modal-box select:focus {
+  outline: none;
+  border-color: #c9a227;
+  box-shadow: 0 0 0 3px rgba(201,162,39,0.25);
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.player-card {
+  background: linear-gradient(180deg, #0b3a2b, #061f18);
+  border: 1px solid rgba(201,162,39,0.35);
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.player-card label {
+  color: #f8d76e;
+  font-weight: bold;
+}
+
+.player-card input {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  padding: 8px;
+}
+
+.lang-bar {
+  text-align: right;
+  margin-bottom: 12px;
+}
+
+.lang-bar a {
+  color: #f8d76e;
+  margin-left: 10px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.clock-body {
+  background:
+    radial-gradient(circle at center, #1d6b4b 0%, #061a14 80%);
+}
+
+.clock {
+  text-align: center;
+  padding: 24px;
+}
+
+.clock-grid {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+}
+
+.clock-card {
+  padding: 26px;
+  border-radius: 24px;
+  min-width: 280px;
+}
+
+.level {
+  font-size: 42px;
+  color: #f8d76e;
+  font-weight: bold;
+}
+
+.blinds {
+  font-size: 38px;
+  color: #00ff99;
+  font-weight: bold;
+}
+
+.timer {
+  font-size: 64px;
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.controls {
+  margin-top: 24px;
+}
+
+.controls button {
+  margin: 6px;
+}
+
+.kill {
+  background: linear-gradient(180deg, #ff8a65, #c62828);
+  color: white;
+}
+
+.export {
+  background: linear-gradient(180deg, #9be88f, #2e7d32);
+  color: white;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.modal-box {
+  padding: 24px;
+  border-radius: 22px;
+  width: 340px;
+}
+
+.modal-box select,
+.modal-box input {
+  width: 100%;
+  height: 40px;
+  margin: 8px 0 14px;
+  border-radius: 10px;
+  border: none;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.final-box {
+  text-align: center;
+}
+
+.money-bag {
+  font-size: 72px;
+  animation: bounce 1.4s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.pot-box {
+  background: #061f18;
+  border: 1px solid #c9a227;
+  color: #ffd700;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: bold;
+}
+
+.payout-line {
+  margin: 6px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(201,162,39,0.3);
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .players-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .clock-grid {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .settings-grid,
+  .players-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep errors and pending operations visible without changing the table layout. */
+.error-text { color: #ffb4a9; }
+button:disabled, select:disabled { opacity: .65; cursor: wait; }
+.modal { z-index: 20; }
+.modal-box { max-width: calc(100vw - 64px); max-height: 85vh; overflow-y: auto; }
+.final-box { position: relative; z-index: 0; overflow-wrap: anywhere; }
+.final-box .button { display: inline-block; margin-top: 12px; }
+.money-bag { overflow-wrap: anywhere; }
+
+/* The final screen already had a fireworks placeholder. Animate it on victory. */
+.fireworks { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.fireworks::before, .fireworks::after {
+  content: "";
+  position: absolute;
+  left: 25%; top: 25%;
+  width: 180px; height: 180px;
+  background:
+    radial-gradient(circle at 50% 3%, #ffd700 0 3px, transparent 4px),
+    radial-gradient(circle at 83% 17%, #ff718b 0 3px, transparent 4px),
+    radial-gradient(circle at 97% 50%, #00ff99 0 3px, transparent 4px),
+    radial-gradient(circle at 83% 83%, #80caff 0 3px, transparent 4px),
+    radial-gradient(circle at 50% 97%, #ffd700 0 3px, transparent 4px),
+    radial-gradient(circle at 17% 83%, #ff718b 0 3px, transparent 4px),
+    radial-gradient(circle at 3% 50%, #00ff99 0 3px, transparent 4px),
+    radial-gradient(circle at 17% 17%, #80caff 0 3px, transparent 4px);
+  animation: firework-burst 2s ease-out infinite;
+}
+.fireworks::after { left: 70%; top: 35%; animation-delay: 1s; }
+@keyframes firework-burst {
+  0% { transform: translate(-50%, -50%) scale(.05); opacity: 1; }
+  80%, 100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fireworks::before, .fireworks::after, .money-bag { animation: none; }
+}

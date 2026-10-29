@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t.setup }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    const submitted = {{ request.form.to_dict() | tojson }};
+    function rebuildPlayers() {
+      const n = Math.max(2, Math.min(20, parseInt(document.getElementById("players").value || "6") || 6));
+      const box = document.getElementById("players_box");
+
+      const old = {};
+      box.querySelectorAll("input").forEach(input => {
+        old[input.name] = input.value;
+      });
+
+      box.innerHTML = "";
+
+      for (let i = 1; i <= n; i++) {
+        const div = document.createElement("div");
+        div.className = "player-card";
+        const label = document.createElement("label");
+        label.textContent = `♠ ${i}`;
+        const input = document.createElement("input");
+        input.name = `player_${i}`;
+        input.placeholder = `Player ${i}`;
+        input.value = old[input.name] ?? submitted[input.name] ?? "";
+        div.append(label, input);
+        box.appendChild(div);
+      }
+    }
+
+    function updatePayoutFields() {
+      const paid = parseInt(document.getElementById("paid_places").value || "1");
+      const secondBox = document.getElementById("second_pct_box");
+
+      secondBox.style.display = paid === 3 ? "block" : "none";
+      const second = document.querySelector('[name="second_pct"]');
+      second.disabled = paid !== 3;
+      second.required = paid === 3;
+      const winner = document.querySelector('[name="winner_pct"]');
+      winner.disabled = paid === 1;
+      winner.max = paid === 1 ? 100 : 99;
+
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".settings-grid input").forEach(input => {
+        if (Object.hasOwn(submitted, input.name)) input.value = submitted[input.name];
+      });
+      rebuildPlayers();
+      updatePayoutFields();
+    });
+  </script>
+</head>
+
+<body>
+  <main class="container">
+    <div class="lang-bar">
+      <a href="{{ url_for('set_lang', code='fr') }}">FR</a>
+      <a href="{{ url_for('set_lang', code='es') }}">ES</a>
+      <a href="{{ url_for('set_lang', code='en') }}">EN</a>
+    </div>
+
+    <section class="hero">
+      <h1>{{ t.setup }}</h1>
+      <p>{{ t.subtitle }}</p>
+    </section>
+
+    <form method="post" class="panel">
+      {% if error %}<p class="request-error" role="alert">{{ error }}</p>{% endif %}
+
+      <h2>{{ t.setup }}</h2>
+
+      <div class="settings-grid">
+        <label class="setting-card">
+          <span>{{ t.players }}</span>
+          <input id="players" name="players" type="number" min="2" max="20" value="6" onchange="rebuildPlayers()" required>
+        </label>
+
+        <label class="setting-card">
+          <span>{{ t.duration }}</span>
+          <input name="duration" type="number" min="15" value="180" required>
+        </label>
+
+        <label class="setting-card">
+          <span>{{ t.buyin_money }}</span>
+          <input name="buyin_money" type="number" min="1" value="50000" required>
+          <small>{{ t.money_help }}</small>
+        </label>
+
+        <label class="setting-card">
+          <span>{{ t.buyin_chips }}</span>
+          <input name="buyin_chips" type="number" min="1" value="1200" required>
+          <small>{{ t.chips_help }}</small>
+        </label>
+
+        <label class="setting-card">
+          <span>{{ t.max_rebuys }}</span>
+          <input name="max_rebuys" type="number" min="0" value="1" required>
+        </label>
+      </div>
+
+      <h2>{{ t.names }}</h2>
+      <div id="players_box" class="players-grid"></div>
+
+      <h2>{{ t.prize_pool }}</h2>
+
+      <div class="settings-grid">
+        <label class="setting-card">
+          <span>{{ t.paid_places }}</span>
+          <input id="paid_places" name="paid_places" type="number" min="1" max="3" value="3" onchange="updatePayoutFields()" required>
+        </label>
+
+        <label class="setting-card">
+          <span>{{ t.winner_pct }}</span>
+          <input name="winner_pct" type="number" min="1" max="100" value="60" required>
+        </label>
+
+        <label id="second_pct_box" class="setting-card">
+          <span>{{ t.second_pct }}</span>
+          <input name="second_pct" type="number" min="0" max="100" value="30">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="submit">{{ t.calculate }}</button>
+        <a class="button secondary" href="{{ url_for('index') }}">{{ t.back }}</a>
+      </div>
+
+    </form>
+  </main>
+</body>
+</html>

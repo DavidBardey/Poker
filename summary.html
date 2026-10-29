@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ t.setup }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <div class="lang-bar">
+      <a href="{{ url_for('set_lang', code='fr') }}">FR</a>
+      <a href="{{ url_for('set_lang', code='es') }}">ES</a>
+      <a href="{{ url_for('set_lang', code='en') }}">EN</a>
+    </div>
+
+    <section class="panel">
+      <h1>{{ t.setup }}</h1>
+
+      <p>{{ t.buyin_money }} : <strong>{{ state.buyin_money }}</strong></p>
+      <p>{{ t.buyin_chips }} : <strong>{{ state.buyin_chips }}</strong></p>
+      <h2>{{ t.names }}</h2>
+      <ul>
+        {% for p in state.players %}
+          <li>{{ p }}</li>
+        {% endfor %}
+      </ul>
+
+      <h2>Blinds</h2>
+      <table>
+        <tr>
+          <th>{{ t.level }}</th>
+          <th>Blinds</th>
+          <th>Time</th>
+        </tr>
+        {% for row in state.detailed %}
+          <tr>
+            <td>{{ row.level }}</td>
+            <td>{{ row.blind }}</td>
+            <td>{{ row.range }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+
+      <a class="button" href="{{ url_for('clock') }}">{{ t.launch }}</a>
+      <a class="button secondary" href="{{ url_for('setup') }}">{{ t.back }}</a>
+    </section>
+  </main>
+</body>
+</html>

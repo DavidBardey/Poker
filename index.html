@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ t.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <div class="lang-bar">
+      <a href="{{ url_for('set_lang', code='fr') }}">FR</a>
+      <a href="{{ url_for('set_lang', code='es') }}">ES</a>
+      <a href="{{ url_for('set_lang', code='en') }}">EN</a>
+    </div>
+
+    <section class="hero">
+      <h1>♠ {{ t.title }} ♥</h1>
+      <p>{{ t.subtitle }}</p>
+    </section>
+
+    <section class="panel center">
+      <a class="button" href="{{ url_for('setup') }}">{{ t.start }}</a>
+    </section>
+  </main>
+</body>
+</html>

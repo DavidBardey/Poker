@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ t.clock }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="clock-body">
+
+  <audio id="alarmSound" preload="auto">
+    <source src="{{ url_for('static', filename='alarm.mp3') }}" type="audio/mpeg">
+  </audio>
+
+  <main class="clock">
+    <div class="lang-bar clock-lang">
+      <a href="{{ url_for('set_lang', code='fr') }}" onclick="changeLanguage(event, 'fr')">FR</a>
+      <a href="{{ url_for('set_lang', code='es') }}" onclick="changeLanguage(event, 'es')">ES</a>
+      <a href="{{ url_for('set_lang', code='en') }}" onclick="changeLanguage(event, 'en')">EN</a>
+    </div>
+
+    <h1 data-i18n="clock">{{ t.clock }}</h1>
+
+    <section class="clock-grid">
+      <div class="clock-card">
+        <div id="level" class="level"></div>
+        <div id="blinds" class="blinds"></div>
+        <div id="timer" class="timer"></div>
+        <div id="next" class="next"></div>
+      </div>
+
+      <div class="clock-card">
+        <h2 data-i18n="alive">{{ t.alive }}</h2>
+        <div id="active_players" class="players-list"></div>
+
+        <h2 data-i18n="out">{{ t.out }}</h2>
+        <div id="eliminated_players" class="players-list eliminated"></div>
+      </div>
+    </section>
+
+    <p id="clockError" class="error-text" role="alert"></p>
+    <section class="controls">
+      <button onclick="previousLevel()" data-i18n="previous">{{ t.previous }}</button>
+      <button id="pauseBtn" onclick="togglePause()" data-i18n="pause">{{ t.pause }}</button>
+      <button class="kill" onclick="openKillModal()" data-i18n="kill">{{ t.kill }}</button>
+      <button onclick="nextLevel(false)" data-i18n="next_level">{{ t.next_level }}</button>
+      <button class="export" onclick="finishGame()" data-i18n="end_excel">{{ t.end_excel }}</button>
+    </section>
+  </main>
+
+  <div id="killModal" class="modal hidden">
+    <div class="modal-box">
+      <h2 data-i18n="kill">{{ t.kill }}</h2>
+
+      <label data-i18n="killed_player">{{ t.killed_player }}</label>
+      <select id="killedPlayer" onchange="refreshKillModal()"></select>
+
+      <label data-i18n="outcome">{{ t.outcome }}</label>
+      <select id="outcome"></select>
+
+      <label data-i18n="killer">{{ t.killer }}</label>
+      <select id="killerPlayer"></select>
+
+      <p id="killError" class="error-text" role="alert"></p>
+
+      <div class="actions">
+        <button onclick="submitKill()" data-i18n="validate">{{ t.validate }}</button>
+        <button onclick="closeKillModal()" data-i18n="cancel">{{ t.cancel }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="finalModal" class="modal hidden">
+    <div class="modal-box final-box">
+      <div id="fireworks" class="fireworks" aria-hidden="true"></div>
+      <h1 id="winnerText"></h1>
+      <div id="potBox" class="pot-box"></div>
+      <div class="money-bag">💰💵💵💵</div>
+      <div id="payoutsBox"></div>
+      <a class="button" href="{{ url_for('export') }}" data-i18n="end_excel">{{ t.end_excel }}</a>
+      <a class="button secondary" href="{{ url_for('index') }}" data-i18n="menu">{{ t.menu }}</a>
+    </div>
+  </div>
+
+  <script>
+    let TXT = {{ texts | tojson }};
+    let state = {{ state | tojson }};
+
+    let running = true;
+    let timerHandle = null;
+    let changingLevel = false;
+    let killModalOpen = false;
+    let resumeAfterKill = false;
+    let killPending = false;
+    let finished = false;
+    let finalData = null;
+    let languagePending = false;
+
+    let levelDurationMs = state.minutes_per_level * 60 * 1000;
+    let levelEndTimestamp = Date.now() + levelDurationMs;
+    let remainingSeconds = state.minutes_per_level * 60;
+
+    let alarmPlayedForThisLevel = false;
+    let alarmUnlocked = false;
+
+    function unlockAlarm() {
+      const alarm = document.getElementById("alarmSound");
+      if (!alarm || alarmUnlocked) return;
+
+      alarm.volume = 0.9;
+      alarm.play()
+        .then(() => {
+          alarm.pause();
+          alarm.currentTime = 0;
+          alarmUnlocked = true;
+        })
+        .catch(() => {});
+    }
+
+    document.addEventListener("click", unlockAlarm, { once: true });
+
+    function playAlarm() {
+      const alarm = document.getElementById("alarmSound");
+      if (!alarm) return;
+
+      try {
+        alarm.currentTime = 0;
+        alarm.volume = 0.9;
+        alarm.play().catch(() => {});
+      } catch (e) {
+        console.log("Alarme non jouée :", e);
+      }
+    }
+
+    function formatTime(seconds) {
+      seconds = Math.max(0, seconds);
+      const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+      const s = (seconds % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function computeRemainingSeconds() {
+      if (!running) {
+        return remainingSeconds;
+      }
+      return Math.max(0, Math.ceil((levelEndTimestamp - Date.now()) / 1000));
+    }
+
+    function resetLevelTimer() {
+      levelDurationMs = state.minutes_per_level * 60 * 1000;
+      levelEndTimestamp = Date.now() + levelDurationMs;
+      remainingSeconds = state.minutes_per_level * 60;
+      alarmPlayedForThisLevel = false;
+    }
+
+    function stopTimerHandle() {
+      if (timerHandle) {
+        clearTimeout(timerHandle);
+        timerHandle = null;
+      }
+    }
+
+    function normalizeName(name) {
+      return String(name || "").trim();
+    }
+
+    function render() {
+      const currentLevel = Math.max(1, state.current_level || 1);
+      const levelIndex = Math.max(0, currentLevel - 1);
+
+      document.getElementById("level").textContent =
+        `${TXT.level} ${currentLevel}`;
+
+      document.getElementById("blinds").textContent =
+        state.schedule && state.schedule[levelIndex] ? state.schedule[levelIndex] : "-";
+
+      document.getElementById("timer").textContent =
+        formatTime(computeRemainingSeconds());
+
+      if (state.schedule && currentLevel < state.schedule.length) {
+        document.getElementById("next").textContent =
+          `${TXT.next}: ${state.schedule[currentLevel]}`;
+      } else {
+        document.getElementById("next").textContent = "";
+      }
+
+      document.getElementById("active_players").textContent =
+        state.active_players && state.active_players.length
+          ? state.active_players.join(", ")
+          : "-";
+
+      document.getElementById("eliminated_players").textContent =
+        state.eliminated_players && state.eliminated_players.length
+          ? state.eliminated_players.join(", ")
+          : "-";
+    }
+
+    function tick() {
+      stopTimerHandle();
+      if (!running || changingLevel || finished) return;
+
+      remainingSeconds = computeRemainingSeconds();
+      render();
+
+      if (remainingSeconds <= 5 && remainingSeconds > 0 && !alarmPlayedForThisLevel) {
+        playAlarm();
+        alarmPlayedForThisLevel = true;
+      }
+
+      if (remainingSeconds <= 0) {
+        nextLevel(true);
+        return;
+      }
+
+      timerHandle = setTimeout(tick, 250);
+    }
+
+    function togglePause() {
+      unlockAlarm();
+      if (killModalOpen || finished) return;
+
+      if (running) {
+        remainingSeconds = computeRemainingSeconds();
+        running = false;
+        stopTimerHandle();
+        document.getElementById("pauseBtn").textContent = TXT.resume;
+      } else {
+        running = true;
+        levelEndTimestamp = Date.now() + remainingSeconds * 1000;
+        document.getElementById("pauseBtn").textContent = TXT.pause;
+        tick();
+      }
+
+      render();
+    }
+
+    async function fetchJson(url, options = {}) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch(url, {...options, signal: controller.signal});
+        const data = await response.json();
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.error || TXT.request_error);
+        }
+        return data;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function changeLevel(direction) {
+      if (changingLevel || killModalOpen || finished) return;
+      changingLevel = true;
+      let retryDelay = 1000;
+      unlockAlarm();
+      stopTimerHandle();
+      try {
+        const data = await fetchJson("/api/level", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({direction})
+        });
+        if (!data.state || !Array.isArray(data.state.schedule)) throw new Error(TXT.request_error);
+        state = data.state;
+        resetLevelTimer();
+        retryDelay = 250;
+        document.getElementById("clockError").textContent = "";
+      } catch (error) {
+        document.getElementById("clockError").textContent = TXT.request_error;
+      } finally {
+        changingLevel = false;
+        render();
+        // On failure at 00:00, back off rather than immediately retrying
+        // recursively. A paused or finished game must never be restarted.
+        if (running && !finished) timerHandle = setTimeout(tick, retryDelay);
+      }
+    }
+
+    function nextLevel() { return changeLevel("next"); }
+    function previousLevel() { return changeLevel("previous"); }
+
+    function fillSelect(select, values) {
+      select.innerHTML = "";
+
+      values.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      });
+    }
+
+    function rebuysForPlayer(player) {
+      const p = normalizeName(player);
+
+      if (!state.events) return 0;
+
+      return state.events.filter(e =>
+        e.action === "Kill" &&
+        normalizeName(e.killed) === p &&
+        e.rebuy === "Oui"
+      ).length;
+    }
+
+    function refreshKillModal() {
+      const killed = document.getElementById("killedPlayer").value;
+
+      const killers = (state.active_players || []).filter(
+        p => normalizeName(p) !== normalizeName(killed)
+      );
+
+      fillSelect(document.getElementById("killerPlayer"), killers);
+
+      const outcome = document.getElementById("outcome");
+      outcome.innerHTML = "";
+
+      const used = rebuysForPlayer(killed);
+      const remaining = state.max_rebuys - used;
+
+      if (remaining > 0) {
+        const rebuyOpt = document.createElement("option");
+        rebuyOpt.value = "rebuy";
+        rebuyOpt.textContent = `${TXT.rebuy} (${remaining})`;
+        outcome.appendChild(rebuyOpt);
+      }
+
+      const outOpt = document.createElement("option");
+      outOpt.value = "out";
+      outOpt.textContent = TXT.eliminated;
+      outcome.appendChild(outOpt);
+
+      if (remaining <= 0) {
+        outcome.value = "out";
+      }
+    }
+
+    function openKillModal() {
+      unlockAlarm();
+      if (killModalOpen || killPending || changingLevel || finished) return;
+      if (!state.active_players || state.active_players.length <= 1) {
+        finishGame();
+        return;
+      }
+      killModalOpen = true;
+      resumeAfterKill = running;
+
+      if (running) {
+        remainingSeconds = computeRemainingSeconds();
+        running = false;
+        stopTimerHandle();
+        document.getElementById("pauseBtn").textContent = TXT.resume;
+      }
+
+      fillSelect(document.getElementById("killedPlayer"), state.active_players);
+      refreshKillModal();
+
+      document.getElementById("killError").textContent = "";
+      document.getElementById("killModal").classList.remove("hidden");
+      render();
+    }
+
+    function closeKillModal() {
+      if (!killModalOpen || killPending) return;
+      document.getElementById("killModal").classList.add("hidden");
+      killModalOpen = false;
+      const resume = resumeAfterKill && !finished && state.active_players.length > 1;
+      resumeAfterKill = false;
+      if (resume) {
+        running = true;
+        levelEndTimestamp = Date.now() + remainingSeconds * 1000;
+        document.getElementById("pauseBtn").textContent = TXT.pause;
+        tick();
+      }
+    }
+
+    function setKillPending(pending) {
+      killPending = pending;
+      document.querySelectorAll("#killModal button, #killModal select").forEach(el => {
+        el.disabled = pending;
+      });
+    }
+
+    async function submitKill() {
+      if (killPending || !killModalOpen) return;
+      setKillPending(true);
+      try {
+        const data = await fetchJson("/api/kill", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            killed: document.getElementById("killedPlayer").value,
+            killer: document.getElementById("killerPlayer").value,
+            outcome: document.getElementById("outcome").value
+          })
+        });
+        if (!data.state || !Array.isArray(data.state.active_players)) throw new Error(TXT.request_error);
+        state = data.state;
+        setKillPending(false);
+        closeKillModal();
+        render();
+        if (state.active_players.length === 1) await finishGame();
+      } catch (error) {
+        document.getElementById("killError").textContent =
+          error.name === "AbortError" || error instanceof TypeError ? TXT.request_error : error.message;
+      } finally {
+        setKillPending(false);
+      }
+    }
+
+    function renderFinal(data) {
+      document.getElementById("winnerText").textContent = data.winner
+        ? "🏆 " + TXT.winner + " " + data.winner + "!"
+        : TXT.end_excel;
+      document.getElementById("potBox").textContent =
+        TXT.pot_total + ": " + data.pot.toLocaleString() + " COP";
+      const box = document.getElementById("payoutsBox");
+      box.innerHTML = "";
+      data.payouts.forEach(p => {
+        const row = document.createElement("div");
+        row.className = "payout-line";
+        row.textContent = p.rank + ". " + p.player + " — " + p.percent + "% — " + p.amount.toLocaleString() + " COP";
+        box.appendChild(row);
+      });
+      document.getElementById("fireworks").classList.toggle("hidden", !data.winner);
+      document.getElementById("finalModal").classList.remove("hidden");
+    }
+
+    async function finishGame() {
+      if (changingLevel || killPending) return;
+      if (running) remainingSeconds = computeRemainingSeconds();
+      running = false;
+      finished = true;
+      stopTimerHandle();
+      render();
+      try {
+        finalData = await fetchJson("/api/final");
+        renderFinal(finalData);
+        document.getElementById("clockError").textContent = "";
+      } catch (error) {
+        document.getElementById("clockError").textContent = TXT.request_error;
+      }
+    }
+
+    async function changeLanguage(event, code) {
+      event.preventDefault();
+      if (languagePending) return;
+      languagePending = true;
+      try {
+        TXT = await fetchJson("/api/lang/" + code, {method: "POST"});
+        document.documentElement.lang = code;
+        document.title = TXT.clock;
+        document.querySelectorAll("[data-i18n]").forEach(el => {
+          el.textContent = TXT[el.dataset.i18n];
+        });
+        document.getElementById("pauseBtn").textContent = running ? TXT.pause : TXT.resume;
+        if (killModalOpen && !killPending) {
+          const killer = document.getElementById("killerPlayer").value;
+          const outcome = document.getElementById("outcome").value;
+          refreshKillModal();
+          document.getElementById("killerPlayer").value = killer;
+          document.getElementById("outcome").value = outcome;
+        }
+        render();
+        if (finalData) renderFinal(finalData);
+      } catch (error) {
+        document.getElementById("clockError").textContent = TXT.request_error;
+      } finally {
+        languagePending = false;
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && running) {
+        remainingSeconds = computeRemainingSeconds();
+
+        if (remainingSeconds <= 5 && remainingSeconds > 0 && !alarmPlayedForThisLevel) {
+          playAlarm();
+          alarmPlayedForThisLevel = true;
+        }
+
+        if (remainingSeconds <= 0) {
+          nextLevel(true);
+        } else {
+          render();
+        }
+      }
+    });
+
+    window.addEventListener("focus", () => {
+      if (running) {
+        remainingSeconds = computeRemainingSeconds();
+        render();
+      }
+    });
+
+    render();
+    tick();
+  </script>
+</body>
+</html>
